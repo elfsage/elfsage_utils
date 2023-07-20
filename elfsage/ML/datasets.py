@@ -1,3 +1,4 @@
+import itertools
 import json
 import random
 import cv2
@@ -167,8 +168,9 @@ class ObjectDetectionGenerator(Sequence):
 
     def tf_dataset(self):
         images = tf.convert_to_tensor(self._images/255.0, np.float32)
-        boxes = tf.ragged.constant(self._boxes, np.float32)
-        classes = tf.ragged.constant(self._labels, np.float32)
+        boxes = tf.RaggedTensor.from_row_lengths(list(itertools.chain(*self._boxes)), row_lengths, np.float32).to_tensor(-1)
+        classes = tf.RaggedTensor.from_row_lengths(list(itertools.chain(*self._labels)), row_lengths, np.float32).to_tensor(-1)
+
         data = (
             images,
             {
