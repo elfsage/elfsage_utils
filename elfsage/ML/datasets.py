@@ -169,8 +169,14 @@ class ObjectDetectionGenerator(Sequence):
 
     def tf_dataset(self):
         images = tf.convert_to_tensor(self._images/255.0, np.float32)
-        boxes = tf.RaggedTensor.from_row_lengths(list(itertools.chain(*self._boxes)), row_lengths, np.float32).to_tensor(-1)
-        classes = tf.RaggedTensor.from_row_lengths(list(itertools.chain(*self._labels)), row_lengths, np.float32).to_tensor(-1)
+        boxes_row_lengths = list(map(len, self._boxes))
+        boxes = tf.RaggedTensor.from_row_lengths(
+            list(itertools.chain(*self._boxes)), boxes_row_lengths, np.float32
+        ).to_tensor(-1)
+        classes_row_lengths = list(map(len, self._labels))
+        classes = tf.RaggedTensor.from_row_lengths(
+            list(itertools.chain(*self._labels)), classes_row_lengths, np.float32
+        ).to_tensor(-1)
 
         data = (
             images,
