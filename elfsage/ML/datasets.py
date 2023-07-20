@@ -73,7 +73,8 @@ class COCOReader:
 
     def _prepare_item(self, image_id):
         image_data = self.images_index[image_id]
-        annotations = self.annotations_index[image_id]
+
+        annotations = self.annotations_index.get(image_id) or []
         polygons = []
         boxes = []
         labels = []
