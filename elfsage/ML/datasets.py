@@ -3,7 +3,7 @@ import random
 import cv2
 import matplotlib.pyplot as plt
 import tqdm
-
+import tensorflow as tf
 from elfsage.images import load_image, resize_image
 import numpy as np
 from pathlib import Path
@@ -129,7 +129,10 @@ class ObjectDetectionGenerator(Sequence):
         end_pos = min(start_pos + self._batch_size, self._sample_number)
 
         images = self._images[start_pos:end_pos]
-        boxes = [{'box': self._boxes[i], 'classification': self._labels[i]} for i in range(start_pos, end_pos)]
+        boxes = {
+            'boxes': np.array(self._boxes[start_pos:end_pos]),
+            'classes': np.array(self._labels[start_pos:end_pos])
+        }
 
         return images, boxes
 
@@ -147,29 +150,35 @@ class ObjectDetectionGenerator(Sequence):
         with tqdm.tqdm(total=self._sample_number, desc='Generating samples') as bar:
             while i < self._sample_number:
                 for item in self._data_reader:
-                    # image, scale = resize_image(item[0], self._image_shape, return_scale=True)
-                    # boxes = np.array(item[2])*scale
                     image = item[0]
-                    # plt.imshow(image)
-                    # plt.show()
                     boxes = item[2]
                     transformed_item = self._transformer(image=image, bboxes=boxes, class_labels=item[3])
                     encoded_labels = self._label_encoder.transform(transformed_item['class_labels'])
-                    categorical_labels = to_categorical(encoded_labels, num_classes=len(self.labels))
-                    # plt.imshow(transformed_item['image'])
-                    # plt.show()
+                    # categorical_labels = to_categorical(encoded_labels, num_classes=len(self.labels))
                     self._images[i, :, :, :] = transformed_item['image']
-                    # print(item[2], transformed_item['bboxes'])
-                    self._boxes.append(transformed_item['bboxes'])
-                    self._labels.append(categorical_labels)
+                    self._boxes.append(np.array(transformed_item['bboxes']))
+                    self._labels.append(np.array(encoded_labels))
 
                     bar.update()
                     i += 1
                     if i >= self._sample_number:
                         break
                 self._data_reader.shuffle()
-        # self._boxes = np.array(self._boxes)
-        # self._labels = np.array(self._labels)
+
+    def tf_dataset(self):
+        images = tf.convert_to_tensor(self._images/255.0, np.float32)
+        boxes = tf.ragged.constant(self._boxes, np.float32)
+        classes = tf.ragged.constant(self._labels, np.float32)
+        data = (
+            images,
+            {
+                'boxes': boxes,
+                'classes': classes
+            }
+        )
+        ds = tf.data.Dataset.from_tensor_slices(data)
+
+        return ds
 
     def _get_default_transformer(self):
         transformer = a.Compose([
@@ -180,12 +189,6 @@ class ObjectDetectionGenerator(Sequence):
                 border_mode=0,
                 value=(0, 0, 0)
             ),
-            # a.Resize(
-            #     width=self._image_shape[1],
-            #     height=self._image_shape[0],
-            #     interpolation=cv2.INTER_AREA,
-            #     always_apply=True
-            # ),
             a.Rotate(
                 interpolation=cv2.INTER_CUBIC,
                 border_mode=cv2.BORDER_CONSTANT,
@@ -203,7 +206,7 @@ class ObjectDetectionGenerator(Sequence):
                 keep_ratio=True,
                 always_apply=True,
             ),
-            a.ToFloat(max_value=1, always_apply=True)
+            # a.ToFloat(max_value=255, always_apply=True)
         ], bbox_params=a.BboxParams(format=self._bbox_format, label_fields=['class_labels']))
 
         return transformer
@@ -215,19 +218,18 @@ def main():
         r'C:\Users\U_4104Z\Downloads\project-3-at-2023-07-18-09-56-0a77c3a5\images'
     )
     generator = ObjectDetectionGenerator(reader, 32)
+    ds = generator.tf_dataset()
+    ds = ds.ragged_batch(8)
+    print(ds.element_spec)
 
-    for item in generator:
-        y_true = {
-            'boxes': [[row['box'][0]] for row in item[1]],
-            'classes': np.argmax([[row['classification'][0]] for row in item[1]], axis=-1),
-        }
+    for item in ds:
         class_mapping = dict(zip(range(len(generator.labels)), generator.labels))
         visualization.plot_bounding_box_gallery(
-            item[0],
+            item[0]*255,
             value_range=(0, 255),
-            rows=5,
-            cols=6,
-            y_true=y_true,
+            rows=2,
+            cols=4,
+            y_true=item[1],
             scale=5,
             font_scale=0.7,
             bounding_box_format="xywh",
