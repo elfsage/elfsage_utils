@@ -2,16 +2,21 @@ import itertools
 import json
 import random
 import cv2
-import matplotlib.pyplot as plt
 import tqdm
-import tensorflow as tf
-from elfsage.images import load_image, resize_image
+
+from elfsage.ML.boxes import convert_box_format, box_area
+from elfsage.images import load_image
 import numpy as np
 from pathlib import Path
-from keras.utils import Sequence, to_categorical
 import albumentations as a
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn.preprocessing import LabelEncoder
+from PIL import Image
+
+import tensorflow as tf
 from keras_cv import visualization
+from keras.utils import Sequence
+import torch
+import torchvision.transforms as transforms
 
 
 class COCOReader:
@@ -93,7 +98,7 @@ class COCOReader:
         pass
 
 
-class ObjectDetectionGenerator(Sequence):
+class ObjectDetectionDataset(Sequence):
     def __init__(
             self,
             data_reader,
@@ -102,10 +107,12 @@ class ObjectDetectionGenerator(Sequence):
             seed=42,
             image_shape=(512, 512, 3),
             transformer=None,
-            bbox_format='coco'
+            bbox_format='coco',
+            item_format='tf'
     ):
         super().__init__()
         assert len(image_shape) == 3, 'Image shape must be of degree 3'
+        assert item_format in ['tf', 'torch'], 'Unknown item format: {}'.format(item_format)
 
         self._data_reader = data_reader
         self._sample_number = sample_number
@@ -115,6 +122,7 @@ class ObjectDetectionGenerator(Sequence):
         self._mask_shape = image_shape[:2] + (1,)
         self._bbox_format = bbox_format
         self._transformer = transformer if transformer is not None else self._get_default_transformer()
+        self._item_format = item_format
 
         self._label_encoder = LabelEncoder()
         labels = [category['name'] for category in self._data_reader.categories_index.values()]
@@ -123,20 +131,44 @@ class ObjectDetectionGenerator(Sequence):
         random.seed(self._seed)
         self._prepare_data()
 
+        if self._item_format == 'torch':
+            self._batch_size = 1
+
     def __len__(self):
-        return int(np.ceil(self._data_reader.__len__() / float(self._batch_size)))
+        return int(np.ceil(self._sample_number / float(self._batch_size)))
 
     def __getitem__(self, idx):
         start_pos = idx * self._batch_size
         end_pos = min(start_pos + self._batch_size, self._sample_number)
 
-        images = self._images[start_pos:end_pos]
-        boxes = {
-            'boxes': np.array(self._boxes[start_pos:end_pos]),
-            'classes': np.array(self._labels[start_pos:end_pos])
-        }
+        if self._item_format == 'tf':
+            images = self._images[start_pos:end_pos]
+            boxes = {
+                'boxes': np.array(self._boxes[start_pos:end_pos]),
+                'classes': np.array(self._labels[start_pos:end_pos])
+            }
 
-        return images, boxes
+            return images, boxes
+        elif self._item_format == 'torch':
+            images = transforms.ToTensor()(Image.fromarray(self._images[idx]))
+            if len(self._boxes[idx]):
+                boxes = torch.as_tensor(convert_box_format(self._boxes[idx], 'xywh', 'xyxy'), dtype=torch.float32)
+            else:
+                boxes = torch.empty((0, 4), dtype=torch.float32)
+            labels = torch.as_tensor(self._labels[idx]+1, dtype=torch.int64)
+            image_id = torch.as_tensor(np.array([idx]), dtype=torch.int64)
+            areas = torch.as_tensor(box_area(self._boxes[idx]), dtype=torch.float32)
+            iscrowd = torch.zeros((len(boxes),), dtype=torch.int64)
+
+            item = {
+                'boxes': boxes,
+                'labels': labels,
+                'image_id': image_id,
+                'area': areas,
+                'iscrowd': iscrowd
+            }
+
+            return images, item
 
     @property
     def labels(self):
@@ -198,27 +230,35 @@ class ObjectDetectionGenerator(Sequence):
                 border_mode=0,
                 value=(0, 0, 0)
             ),
-            a.Rotate(
-                interpolation=cv2.INTER_CUBIC,
-                border_mode=cv2.BORDER_CONSTANT,
-                value=(0, 0, 0),
-                always_apply=True
-            ),
+            # a.Rotate(
+            #     limit=(-45, 45),
+            #     interpolation=cv2.INTER_CUBIC,
+            #     border_mode=cv2.BORDER_CONSTANT,
+            #     value=(0, 0, 0),
+            #     always_apply=True
+            # ),
             a.HorizontalFlip(),
             a.VerticalFlip(),
             a.RandomBrightnessContrast(),
             a.Affine(
                 scale={'x': (0.7, 1.3), 'y': (0.7, 1.3)},
                 translate_percent={'x': (-0.2, 0.2), 'y': (-0.2, 0.2)},
-                shear={'x': (-20, 20), 'y': (-20, 20)},
+                rotate=(-25, 25),
+                shear={'x': (-10, 10), 'y': (-10, 10)},
                 interpolation=cv2.INTER_CUBIC,
                 keep_ratio=True,
+                rotate_method='ellipse',
                 always_apply=True,
             ),
             # a.ToFloat(max_value=255, always_apply=True)
         ], bbox_params=a.BboxParams(format=self._bbox_format, label_fields=['class_labels']))
 
         return transformer
+
+
+# For backward compatibility
+class ObjectDetectionGenerator(ObjectDetectionDataset):
+    pass
 
 
 def main():
