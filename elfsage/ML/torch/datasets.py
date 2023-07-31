@@ -65,7 +65,7 @@ class ObjectDetectionDataset(Dataset):
 
             return images, boxes
         elif self._item_format == 'torch':
-            image = torch.from_numpy(self._images[idx].transpose(2, 1, 0)).to(dtype=torch.float32)
+            image = torch.from_numpy(self._images[idx].transpose(2, 0, 1)).contiguous().to(dtype=torch.float32).div(255)
             if len(self._boxes[idx]):
                 boxes = torch.as_tensor(convert_box_format(self._boxes[idx], 'xywh', 'xyxy'), dtype=torch.float32)
             else:
