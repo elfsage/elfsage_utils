@@ -1,6 +1,8 @@
 import random
 import cv2
 import tqdm
+from PIL import Image
+from torchvision import transforms
 
 from elfsage.ML.boxes import convert_box_format, box_area
 import numpy as np
@@ -63,7 +65,7 @@ class ObjectDetectionDataset(Dataset):
 
             return images, boxes
         elif self._item_format == 'torch':
-            image = torch.from_numpy(self._images[idx]).to(dtype=float)
+            image = torch.from_numpy(self._images[idx].transpose(2, 1, 0)).to(dtype=torch.float32)
             if len(self._boxes[idx]):
                 boxes = torch.as_tensor(convert_box_format(self._boxes[idx], 'xywh', 'xyxy'), dtype=torch.float32)
             else:
@@ -140,7 +142,14 @@ class ObjectDetectionDataset(Dataset):
 
 
 def main():
-    pass
+    from elfsage.ML.datasets import COCOReader
+
+    reader = COCOReader(
+        r'C:\Users\U_4104Z\Downloads\project-3-at-2023-07-18-09-56-0a77c3a5\result.json',
+        r'C:\Users\U_4104Z\Downloads\project-3-at-2023-07-18-09-56-0a77c3a5\images'
+    )
+    ds = ObjectDetectionDataset(reader, 32, image_shape=tuple([1024, 1024, 3]))
+    print(next(iter(ds))[0].shape)
 
 
 if __name__ == '__main__':
