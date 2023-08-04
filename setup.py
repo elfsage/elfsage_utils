@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='elfsage',
-    version='0.2.3',
+    version='0.2.4',
     description='Bunch of often-used funcs',
     license='GNU GPL',
     packages=find_packages(),

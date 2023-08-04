@@ -1,6 +1,9 @@
 import glob
+from os.path import basename
+
 import cv2
 import numpy as np
+from imageio import imwrite
 from tqdm import tqdm
 from os import makedirs
 
@@ -10,6 +13,9 @@ def resize_image(image, target_image_shape, background_color=(255, 255, 255), re
     inter = cv2.INTER_AREA if scale_factor < 1 else cv2.INTER_CUBIC
 
     image = cv2.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=inter)
+
+    offset_x = 0
+    offset_y = 0
 
     if image.shape[1] != target_image_shape[1] or image.shape[0] != target_image_shape[0]:
         offset_x = int((target_image_shape[1] - image.shape[1]) / 2)
@@ -22,7 +28,7 @@ def resize_image(image, target_image_shape, background_color=(255, 255, 255), re
         )
 
     if return_scale:
-        return image, scale_factor
+        return image, scale_factor, float(offset_x) / target_image_shape[1], float(offset_y) / target_image_shape[0]
     else:
         return image
 
