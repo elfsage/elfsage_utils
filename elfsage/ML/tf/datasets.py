@@ -1,6 +1,5 @@
 import cv2
 import tqdm
-import torch
 import random
 import itertools
 import numpy as np
@@ -68,26 +67,7 @@ class ObjectDetectionDataset(Sequence):
 
             return images, boxes
         elif self._item_format == 'torch':
-            # image = transforms.ToTensor()(Image.fromarray(self._images[idx]))
-            image = torch.from_numpy(self._images[idx]).to(dtype=float)
-            if len(self._boxes[idx]):
-                boxes = torch.as_tensor(convert_box_format(self._boxes[idx], 'xywh', 'xyxy'), dtype=torch.float32)
-            else:
-                boxes = torch.empty((0, 4), dtype=torch.float32)
-            labels = torch.as_tensor(self._labels[idx]+1, dtype=torch.int64)
-            image_id = torch.as_tensor(np.array([idx]), dtype=torch.int64)
-            areas = torch.as_tensor(box_area(self._boxes[idx]), dtype=torch.float32)
-            iscrowd = torch.zeros((len(boxes),), dtype=torch.int64)
-
-            item = {
-                'boxes': boxes,
-                'labels': labels,
-                'image_id': image_id,
-                'area': areas,
-                'iscrowd': iscrowd
-            }
-
-            return image, item
+            return None, None
 
     @property
     def labels(self):
