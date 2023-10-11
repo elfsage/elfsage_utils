@@ -8,11 +8,9 @@ import albumentations as a
 import matplotlib.pyplot as plt
 
 from keras.utils import Sequence
-from keras_cv import visualization
 from sklearn.preprocessing import LabelEncoder
 
 from elfsage.ML.datasets import COCOReader
-from elfsage.ML.boxes import convert_box_format, box_area
 
 
 class ObjectDetectionDataset(Sequence):
@@ -209,7 +207,7 @@ class SegmentationDataset(Sequence):
             images = self._images[start_pos:end_pos]
             masks = self._masks[start_pos:end_pos]
 
-            return images, masks
+            return images/255.0, masks/255.0
 
         elif self._item_format == 'torch':
             return None, None
@@ -353,8 +351,12 @@ def main():
     generator = SegmentationDataset(reader, 32)
     for image_batch, masks_batch in generator:
         for image, masks in zip(image_batch, masks_batch):
+            image = (image*255).astype(np.uint8)
+            masks = (masks*255).astype(np.uint8)
             masks = masks.transpose(2, 0, 1)
             for mask in masks:
+                print(image.dtype, image.max())
+                print(mask.dtype, mask.max())
                 mask = color_replace(mask, (255, 255, 255), (0, 255, 0))
                 mask, alpha = color_to_transparent(mask, (0, 0, 0), 10)
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
