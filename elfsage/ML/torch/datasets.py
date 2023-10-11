@@ -128,8 +128,8 @@ class ObjectDetectionDataset(Dataset):
             a.Affine(
                 scale={'x': (0.7, 1.3), 'y': (0.7, 1.3)},
                 translate_percent={'x': (-0.2, 0.2), 'y': (-0.2, 0.2)},
-                rotate=(-25, 25),
-                shear={'x': (-10, 10), 'y': (-10, 10)},
+                # rotate=(-25, 25),
+                # shear={'x': (-10, 10), 'y': (-10, 10)},
                 interpolation=cv2.INTER_CUBIC,
                 keep_ratio=True,
                 rotate_method='ellipse',

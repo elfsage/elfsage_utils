@@ -1,6 +1,8 @@
 import json
 import random
 
+import numpy as np
+
 from elfsage.images import load_image
 from pathlib import Path
 
@@ -70,12 +72,12 @@ class COCOReader:
         boxes = []
         labels = []
 
-        image_file_path = self._images_dir.joinpath(Path(image_data['file_name']).name)
+        image_file_path = self._images_dir.joinpath(Path(image_data['file_name']))
         image = load_image(image_file_path, False)
 
         for annotation in annotations:
             labels.append(self.categories_index[annotation['category_id']]['name'])
-            polygons.append(annotation['segmentation'])
+            polygons.append(np.array(annotation['segmentation']).reshape((-1, 2)).round().astype(int))
             boxes.append(annotation['bbox'])
 
         return image, polygons, boxes, labels
