@@ -89,7 +89,12 @@ class COCOReader:
 
 
 def main():
-    pass
+    reader = COCOReader(
+        r'G:\CVAT\task_passportstamps-2023_10_12_12_30_21-coco 1.0\annotations\instances_default.json',
+        r'G:\CVAT', True)
+
+    for item in reader:
+        print(item)
 
 
 if __name__ == '__main__':

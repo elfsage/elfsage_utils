@@ -227,8 +227,17 @@ class SegmentationDataset(Sequence):
             while i < self._sample_number:
                 for item in self._data_reader:
                     image = item[0]
-                    polygons = item[1]
-                    masks = [self._polygon_to_mask(poly, image.shape[0], image.shape[1]) for poly in polygons]
+                    # polygons = item[1]
+                    polygons_index = {}
+                    for label, polygon in zip(item[3], item[1]):
+                        if label not in polygons_index:
+                            polygons_index[label] = []
+                        polygons_index[label].append(polygon)
+
+                    masks = [
+                        self._polygons_to_mask(polygons, *image.shape[:2])
+                        for label, polygons in polygons_index.items()
+                    ]
 
                     transformed_item = self._transformer(image=image, masks=masks, class_labels=item[3])
                     encoded_labels = self._label_encoder.transform(transformed_item['class_labels'])
@@ -244,9 +253,9 @@ class SegmentationDataset(Sequence):
                 self._data_reader.shuffle()
 
     @staticmethod
-    def _polygon_to_mask(polygon, height, width):
+    def _polygons_to_mask(polygons, height, width):
         mask = np.zeros((height, width), np.uint8)
-        mask = cv2.fillPoly(mask, [polygon], (255, 255, 255))
+        mask = cv2.fillPoly(mask, polygons, (255, 255, 255))
 
         return mask
 
@@ -345,10 +354,11 @@ def main():
     # SegmentationDataset Example
     #
     reader = COCOReader(
-        r'G:\task_documents-2023_10_10_09_30_36-coco 1.0\annotations\instances_default.json',
-        r'G:\task_documents-2023_10_10_09_30_36-coco 1.0\images'
+        r'G:\CVAT\task_passportstamps-2023_10_12_12_30_21-coco 1.0\annotations\instances_default.json',
+        r'G:\CVAT',
+        True
     )
-    generator = SegmentationDataset(reader, 2000)
+    generator = SegmentationDataset(reader, 200)
     for image_batch, masks_batch in generator:
         for image, masks in zip(image_batch, masks_batch):
             image = (image*255).astype(np.uint8)
