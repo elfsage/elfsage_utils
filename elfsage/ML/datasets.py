@@ -1,16 +1,17 @@
 import json
 import random
-
 import numpy as np
+from elfsage.io.json import load_json
 
 from elfsage.images import load_image
 from pathlib import Path
 
 
 class COCOReader:
-    def __init__(self, annotations_file_path, images_dir):
+    def __init__(self, annotations_file_path, images_dir, remove_empty=False):
         self._annotations_file_path = Path(annotations_file_path)
         self._images_dir = Path(images_dir)
+        self._remove_empty = remove_empty
         self._data = None
         self._images_index = None
         self._annotations_index = None
@@ -27,8 +28,7 @@ class COCOReader:
     @property
     def data(self):
         if self._data is None:
-            with self._annotations_file_path.open('r', encoding='utf-8') as f:
-                self._data = json.load(f)
+            self._data = load_json(self._annotations_file_path)
 
         return self._data
 
@@ -37,6 +37,8 @@ class COCOReader:
         if self._images_index is None:
             self._images_index = {}
             for image_data in self.data['images']:
+                if self._remove_empty and image_data['id'] not in self.annotations_index:
+                    continue
                 self._images_index[image_data['id']] = image_data
 
         return self._images_index

@@ -348,15 +348,13 @@ def main():
         r'G:\task_documents-2023_10_10_09_30_36-coco 1.0\annotations\instances_default.json',
         r'G:\task_documents-2023_10_10_09_30_36-coco 1.0\images'
     )
-    generator = SegmentationDataset(reader, 32)
+    generator = SegmentationDataset(reader, 2000)
     for image_batch, masks_batch in generator:
         for image, masks in zip(image_batch, masks_batch):
             image = (image*255).astype(np.uint8)
             masks = (masks*255).astype(np.uint8)
             masks = masks.transpose(2, 0, 1)
             for mask in masks:
-                print(image.dtype, image.max())
-                print(mask.dtype, mask.max())
                 mask = color_replace(mask, (255, 255, 255), (0, 255, 0))
                 mask, alpha = color_to_transparent(mask, (0, 0, 0), 10)
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
