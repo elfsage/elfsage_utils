@@ -41,8 +41,9 @@ class Timer:
     def _init_logger(self):
         import sys
         import logging
+        import uuid
 
-        self._log = logging.getLogger(__name__)
+        self._log = logging.getLogger(str(uuid.uuid4()))
         self._log.setLevel(logging.DEBUG)
 
         handler = logging.StreamHandler(sys.stdout)
