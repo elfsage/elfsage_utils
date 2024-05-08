@@ -12,3 +12,9 @@ def mask_to_rect(mask, eps=0.05):
     rect = cv2.boundingRect(approx)
 
     return rect
+
+
+def crop_by_rect(image, rect):
+    x, y, w, h = rect
+
+    return image[y:y+h, x:x+w]
