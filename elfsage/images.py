@@ -75,3 +75,21 @@ def load_images_with_resize(images_dir, target_image_shape, grayscale, save=True
             imwrite('{}/{}/{}'.format(images_dir.replace('*', ''), 'resized', basename(f)), image)
 
     return images
+
+
+def to_grey(image):
+    image = image.copy()
+    color_mode = None
+
+    assert len(image.shape) in [2, 3], 'Image data is incorrect (shape: {})'.format(image.shape)
+
+    if len(image.shape) == 3:
+        if image.shape[2] == 4:
+            color_mode = cv2.COLOR_RGBA2GRAY
+        elif image.shape[2] == 3:
+            color_mode = cv2.COLOR_RGB2GRAY
+
+    if color_mode is not None:
+        image = cv2.cvtColor(image, color_mode)
+
+    return image
