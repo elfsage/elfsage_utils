@@ -32,4 +32,4 @@ def save_json(data: Union[dict, list], file_path: Union[str, Path]):
         file_path = Path(file_path)
 
     with file_path.open('w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2)
+        json.dump(data, f, indent=2, ensure_ascii=False)
