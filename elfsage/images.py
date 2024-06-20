@@ -1,11 +1,10 @@
-import glob
-from os.path import basename
-
 import cv2
+import glob
 import numpy as np
-from imageio import imwrite
-from tqdm import tqdm
 from os import makedirs
+from os.path import basename
+from skimage.util import view_as_windows
+from imageio import imwrite
 
 
 def resize_image(image, target_image_shape, background_color=(255, 255, 255), return_scale=False):
@@ -57,7 +56,9 @@ def load_image_with_resize(image_path, target_image_shape, grayscale):
 
 
 def load_images_with_resize(images_dir, target_image_shape, grayscale, save=True, image_file_name_mask='*.jpg'):
-    files = [f for f in glob.glob(images_dir + '/' + image_file_name_mask)]  # [:100]
+    from tqdm import tqdm
+
+    files = [f for f in glob.glob(images_dir + '/' + image_file_name_mask)]
     images = np.empty((len(files),)+target_image_shape, np.uint8)
 
     if save:
@@ -93,3 +94,52 @@ def to_grey(image):
         image = cv2.cvtColor(image, color_mode)
 
     return image
+
+
+def cut_image(image: np.ndarray, slice_size: int = 256, slice_overlap: int = 32):
+    canvas_width = ((image.shape[1] - 1) // (slice_size - slice_overlap)) * (slice_size - slice_overlap) + slice_size
+    canvas_height = ((image.shape[0] - 1) // (slice_size - slice_overlap)) * (slice_size - slice_overlap) + slice_size
+    canvas = image.copy()
+    canvas = np.pad(
+        canvas,
+        np.array((
+                (0, canvas_height - image.shape[0]),
+                (0, canvas_width - image.shape[1])
+            )),
+        'constant'
+    )
+    slice_stack = view_as_windows(canvas, (slice_size, slice_size),
+                                  (slice_size - slice_overlap, slice_size - slice_overlap))
+    slice_grid_shape = slice_stack.shape
+
+    return slice_stack.reshape((-1, slice_size, slice_size)), slice_grid_shape
+
+
+def glue_image(
+        slice_stack: np.ndarray,
+        slice_grid_shape: tuple[int],
+        slice_overlap: int = 32,
+        inverted: bool = False
+) -> np.ndarray:
+    slice_grid_stack = slice_stack.reshape(slice_grid_shape)
+    canvas_height = (slice_grid_shape[-2] - slice_overlap) * (slice_grid_shape[0] - 1) + slice_grid_shape[-2]
+    canvas_width = (slice_grid_shape[-1] - slice_overlap) * (slice_grid_shape[1] - 1) + slice_grid_shape[-1]
+    canvas = np.zeros((canvas_height, canvas_width), dtype=np.uint16)
+
+    for i in range(slice_grid_shape[0]):
+        for j in range(slice_grid_shape[1]):
+            y = i * (slice_grid_shape[-2] - slice_overlap)
+            x = j * (slice_grid_shape[-1] - slice_overlap)
+
+            if inverted:
+                canvas[y:y + slice_grid_shape[-2], x:x + slice_grid_shape[-1]] += cv2.bitwise_not(
+                    slice_grid_stack[i, j])
+            else:
+                canvas[y:y + slice_grid_shape[-2], x:x + slice_grid_shape[-1]] += slice_grid_stack[i, j]
+
+    canvas = canvas.clip(0, 255).astype('uint8')
+
+    if inverted:
+        canvas = cv2.bitwise_not(canvas)
+
+    return canvas

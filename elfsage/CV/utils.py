@@ -61,3 +61,24 @@ def transform_perspective(image, pts):
     warped = cv2.warpPerspective(image, mat, (max_width, max_height))
 
     return warped
+
+
+def collage(images, grid_shape):
+    image_shapes = np.array([image.shape[:2] for image in images])
+    cell_shape = image_shapes.max(axis=0)
+    canvas = np.zeros(tuple(np.array(grid_shape) * cell_shape) + (3,), np.uint8)
+
+    for iy, y in enumerate(range(0, canvas.shape[0], cell_shape[0])):
+        for ix, x in enumerate(range(0, canvas.shape[1], cell_shape[1])):
+            i = iy*grid_shape[1] + ix
+
+            if i >= len(images):
+                break
+
+            image = images[i].copy()
+            if len(image.shape) == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+
+            canvas[y:y+image.shape[0], x:x+image.shape[1], :] = image
+
+    return canvas
