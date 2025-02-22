@@ -15,9 +15,13 @@ class Timer:
         self._message_mask = '{stage_time: 10.3f}{unit} ({full_time: 10.3f}{unit}) | {event}'
         self._init_t = time.time()
         self._t = time.time()
+        self._silent = False
+
+    def silent(self):
+        self._silent = True
 
     def __call__(self, *args, **kwargs):
-        if len(args)>0:
+        if len(args) > 0:
             event = args[0]
         else:
             event = 'Run'
@@ -35,7 +39,8 @@ class Timer:
             full_time=full_time,
             unit=self._unit
         )
-        self._log.debug(message)
+        if not self._silent:
+            self._log.debug(message)
         self._t = time.time()
 
     def _init_logger(self):
