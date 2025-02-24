@@ -47,9 +47,9 @@ def load_image(image_path, grayscale):
     return image
 
 
-def load_image_with_resize(image_path, target_image_shape, grayscale):
+def load_image_with_resize(image_path, target_image_shape, grayscale, background_color=(255, 255, 255)):
     image = load_image(image_path, grayscale)
-    image = resize_image(image, target_image_shape)
+    image = resize_image(image, target_image_shape, background_color)
     image = np.reshape(image, target_image_shape)
 
     return image
