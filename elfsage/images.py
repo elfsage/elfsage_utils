@@ -8,7 +8,7 @@ from imageio import imwrite
 
 
 def resize_image(image, target_image_shape, background_color=(255, 255, 255), return_scale=False):
-    scale_factor = min(target_image_shape[0] / image.shape[1], target_image_shape[1] / image.shape[0])
+    scale_factor = min(target_image_shape[0] / image.shape[0], target_image_shape[1] / image.shape[1])
     inter = cv2.INTER_AREA if scale_factor < 1 else cv2.INTER_CUBIC
 
     image = cv2.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=inter)
@@ -143,3 +143,17 @@ def glue_image(
         canvas = cv2.bitwise_not(canvas)
 
     return canvas
+
+
+def decode_image(image_bytes):
+    image = cv2.imdecode(np.asarray(bytearray(image_bytes)), cv2.IMREAD_UNCHANGED)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    return image
+
+
+def encode_image(image, extension):
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    image_bytes = cv2.imencode(extension, image)[1].tobytes()
+
+    return image_bytes
