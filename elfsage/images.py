@@ -7,11 +7,14 @@ from skimage.util import view_as_windows
 from imageio import imwrite
 
 
-def resize_image(image, target_image_shape, background_color=(255, 255, 255), return_scale=False):
-    scale_factor = min(target_image_shape[0] / image.shape[0], target_image_shape[1] / image.shape[1])
-    inter = cv2.INTER_AREA if scale_factor < 1 else cv2.INTER_CUBIC
+def resize_image(image, target_image_shape, background_color=(255, 255, 255), return_scale=False, keep_ratio=True):
+    if keep_ratio:
+        scale_factor_x = scale_factor_y = min(target_image_shape[0] / image.shape[0], target_image_shape[1] / image.shape[1])
+    else:
+        scale_factor_x, scale_factor_y = target_image_shape[1] / image.shape[1], target_image_shape[0] / image.shape[0]
 
-    image = cv2.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=inter)
+    inter = cv2.INTER_AREA if max(scale_factor_x, scale_factor_y) < 1 else cv2.INTER_CUBIC
+    image = cv2.resize(image, None, fx=scale_factor_x, fy=scale_factor_y, interpolation=inter)
 
     offset_x = 0
     offset_y = 0
@@ -27,7 +30,9 @@ def resize_image(image, target_image_shape, background_color=(255, 255, 255), re
         )
 
     if return_scale:
-        return image, scale_factor, float(offset_x) / target_image_shape[1], float(offset_y) / target_image_shape[0]
+        return (image,
+                (scale_factor_x, scale_factor_y),
+                float(offset_x) / target_image_shape[1], float(offset_y) / target_image_shape[0])
     else:
         return image
 
