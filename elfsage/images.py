@@ -7,7 +7,7 @@ from skimage.util import view_as_windows
 from imageio import imwrite
 
 
-def resize_image(image, target_image_shape, background_color=(255, 255, 255), return_scale=False, keep_ratio=True, add_border=True):
+def resize_image(image, target_image_shape, background_color=(255, 255, 255), return_scale=False, keep_ratio=True, exact_size=True):
     if keep_ratio:
         scale_factor_x = scale_factor_y = min(target_image_shape[0] / image.shape[0], target_image_shape[1] / image.shape[1])
     else:
@@ -19,7 +19,7 @@ def resize_image(image, target_image_shape, background_color=(255, 255, 255), re
     offset_x = 0
     offset_y = 0
 
-    if add_border:
+    if exact_size:
         if image.shape[1] != target_image_shape[1] or image.shape[0] != target_image_shape[0]:
             offset_x = int((target_image_shape[1] - image.shape[1]) / 2)
             offset_y = int((target_image_shape[0] - image.shape[0]) / 2)
