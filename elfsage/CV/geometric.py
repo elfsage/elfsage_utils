@@ -1,8 +1,7 @@
-import math
-from typing import Sequence
-
 import cv2
+import math
 import numpy as np
+from typing import Sequence
 import scipy.cluster.hierarchy as sch
 
 
@@ -116,6 +115,14 @@ class Line(Figure):
     @property
     def is_horizontal(self):
         return self.theta_deg % 90 == 0 and self.theta_deg % 180 != 0
+
+    @property
+    def is_nearly_vertical(self):
+        return 0 < abs(self.theta_deg) < 45 or 135 < abs(self.theta_deg) < 180
+
+    @property
+    def is_nearly_horizontal(self):
+        return 45 < abs(self.theta_deg) < 135
 
     @property
     def points(self):
